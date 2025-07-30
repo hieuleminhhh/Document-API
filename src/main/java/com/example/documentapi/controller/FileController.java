@@ -91,12 +91,12 @@ public class FileController {
         ResponseEntity<byte[]> response = restTemplate.exchange(fileUrl, HttpMethod.GET, requestEntity, byte[].class);
 
         if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-            // Lấy tên file từ header Content-Disposition của server trả về
+  
             String contentDisposition = response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION);
-            String filename = fileId; // fallback
+            String filename = fileId;
 
             if (contentDisposition != null && contentDisposition.contains("filename=")) {
-                // Tách tên file
+    
                 int index = contentDisposition.indexOf("filename=");
                 filename = contentDisposition.substring(index + 9).replace("\"", "");
             }
