@@ -32,7 +32,11 @@ public class FileController {
     @Value("${file-server-util.call-api.base-url}")
     private String baseUrl;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
+
+    public FileController(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     @PostMapping("/upload")
     public ResponseEntity<?> uploadFile(@RequestBody FileUploadRequest request) {

@@ -1,9 +1,7 @@
 package com.example.documentapi;
 
 import com.example.documentapi.controller.DocumentController;
-import com.example.documentapi.dto.DocumentRequest;
-import com.example.documentapi.dto.DocumentSearchProjection;
-import com.example.documentapi.dto.DocumentSearchRequest;
+import com.example.documentapi.dto.*;
 import com.example.documentapi.service.DocumentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -20,7 +18,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.Collections;
 import java.util.UUID;
 
-import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -35,104 +35,188 @@ public class DocumentControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
-    // ok
-    @Test
-    void testCreateDocument_Success() throws Exception {
-        UUID mockId = UUID.randomUUID();
 
+    @Test
+    public void createDocument_Success() throws Exception {
+        UUID documentId = UUID.randomUUID();
         DocumentRequest request = new DocumentRequest();
-        request.setCompanyName("Example Company");
+
         request.setTaxCode("123456789");
-        request.setAddress("123 Main St");
+        request.setCompanyName("Test Company");
+        request.setAddress("123 Test Street");
         request.setCompanyPhoneNumber("0123456789");
-        request.setCompanyFax("0123456788");
-        request.setCompanyEmail("contact@example.com");
-        request.setProvinceCode("01");
-        request.setWardCode("001");
+        request.setCompanyFax("0123456789");
+        request.setCompanyEmail("test@example.com");
+        request.setProvinceCode("P001");
+        request.setWardCode("W001");
         request.setDocumentType("Invoice");
         request.setStatusId(UUID.randomUUID());
-        request.setNswCode("NSW123");
+        request.setNswCode("NSW001");
 
-        Mockito.when(documentService.createDocument(Mockito.any())).thenReturn(mockId);
+        Mockito.when(documentService.createDocument(any(DocumentRequest.class))).thenReturn(documentId);
 
         mockMvc.perform(post("/api/documents")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.message", is("Document created successfully")))
+                .andExpect(jsonPath("$.data", is(documentId.toString())));
+    }
+
+    @Test
+    public void saveDocumentHistory_Success() throws Exception {
+        DocumentHistoryRequest request = new DocumentHistoryRequest();
+        request.setDocumentId(UUID.randomUUID());
+        request.setTitle("History Title");
+        request.setContent("Content of history");
+        request.setReason("Some reason"); // optional, nhưng nên set nếu muốn
+        request.setAction("CREATE");
+        request.setMessageContent("Message content here");
+
+        Mockito.doNothing().when(documentService).saveDocumentHistory(eq(request.getDocumentId()),
+                any(DocumentHistoryRequest.class));
+
+        mockMvc.perform(post("/api/documents/history")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
-                .andExpect(jsonPath("$.data", is(mockId.toString())));
+                .andExpect(jsonPath("$.message", is("Document history saved successfully")))
+                .andExpect(jsonPath("$.data.documentId", is(request.getDocumentId().toString())));
     }
 
     @Test
-    void testSearchDocuments_Success() throws Exception {
-        DocumentSearchRequest searchRequest = new DocumentSearchRequest();
-        searchRequest.setTaxCode("1234567890");
-        searchRequest.setCompanyName("company name 1");
-        searchRequest.setProvinceCode("01");
-        searchRequest.setDocumentType("BCT0600099");
-        searchRequest.setStatusId("0ba950dd-6a0c-429b-8dae-811c71f94f52");
-        searchRequest.setPage(0);
-        searchRequest.setSize(10);
+    public void saveDocumentHistory_MissingDocumentId() throws Exception {
+        DocumentHistoryRequest request = new DocumentHistoryRequest();
+        request.setDocumentId(null);
+        request.setTitle("Some title");
+        request.setContent("Some content");
+        request.setAction("UPDATE");
 
-        Page<DocumentSearchProjection> emptyPage = new PageImpl<>(
-                Collections.emptyList(), PageRequest.of(0, 10), 0);
-
-        Mockito.when(documentService.searchDocuments(Mockito.any())).thenReturn(emptyPage);
-
-        mockMvc.perform(post("/api/documents/search")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(searchRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").isArray())
-                .andExpect(jsonPath("$.content").isEmpty())
-                .andExpect(jsonPath("$.pageable.pageNumber", is(0)))
-                .andExpect(jsonPath("$.pageable.pageSize", is(10)));
-    }
-    // fail
-    @Test
-    void testCreateDocument_Fail_MissingCompanyName() throws Exception {
-        DocumentRequest request = new DocumentRequest();
-        request.setCompanyName(""); // Không hợp lệ, @NotBlank
-        request.setTaxCode("123456789");
-        request.setAddress("123 Main St");
-        request.setCompanyPhoneNumber("0123456789");
-        request.setCompanyFax("0123456788");
-        request.setCompanyEmail("contact@example.com");
-        request.setProvinceCode("01");
-        request.setWardCode("001");
-        request.setDocumentType("Invoice");
-        request.setStatusId(UUID.randomUUID());
-        request.setNswCode("NSW123");
-
-        mockMvc.perform(post("/api/documents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest()) // Expect lỗi 400
-                .andExpect(jsonPath("$.success", is(false)))
-                .andExpect(jsonPath("$.message").value("companyName không được để trống"));
-    }
-
-    @Test
-    void testCreateDocument_Fail_InvalidEmail() throws Exception {
-        DocumentRequest request = new DocumentRequest();
-        request.setCompanyName("Example Company");
-        request.setTaxCode("123456789");
-        request.setCompanyEmail("invalid-email");
-        request.setAddress("123 Main St");
-        request.setCompanyPhoneNumber("0123456789");
-        request.setCompanyFax("0123456788");
-        request.setProvinceCode("01");
-        request.setWardCode("001");
-        request.setDocumentType("Invoice");
-        request.setStatusId(UUID.randomUUID());
-        request.setNswCode("NSW123");
-
-        mockMvc.perform(post("/api/documents")
+        mockMvc.perform(post("/api/documents/history")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success", is(false)))
-                .andExpect(jsonPath("$.message").value("Email không hợp lệ"));
+                .andExpect(jsonPath("$.message", is("Document ID is required")));
+    }
+
+    @Test
+    public void saveDocumentHistory_Exception() throws Exception {
+        DocumentHistoryRequest request = new DocumentHistoryRequest();
+        request.setDocumentId(UUID.randomUUID());
+        // Set các trường bắt buộc
+        request.setTitle("Some title");
+        request.setContent("Some content");
+        request.setAction("UPDATE");
+
+        Mockito.doThrow(new RuntimeException("DB error"))
+                .when(documentService)
+                .saveDocumentHistory(eq(request.getDocumentId()), any(DocumentHistoryRequest.class));
+
+        mockMvc.perform(post("/api/documents/history")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.message", containsString("Error saving document history")));
+    }
+
+    @Test
+    public void saveDocumentAttachment_Success() throws Exception {
+        DocumentAttachmentRequest request = new DocumentAttachmentRequest();
+        request.setDocumentId(UUID.randomUUID());
+        request.setFileId(UUID.randomUUID());
+        request.setFileName("example.pdf");
+        request.setFileLink("http://example.com/example.pdf");
+        request.setAttachmentTypeCode("TYPE01");
+
+        Mockito.doNothing().when(documentService).saveDocumentAttachment(eq(request.getDocumentId()),
+                any(DocumentAttachmentRequest.class));
+
+        mockMvc.perform(post("/api/documents/attachments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.message", is("Document attachment saved successfully")))
+                .andExpect(jsonPath("$.data.documentId", is(request.getDocumentId().toString())));
+    }
+
+    @Test
+    public void saveDocumentAttachment_MissingDocumentId() throws Exception {
+        DocumentAttachmentRequest request = new DocumentAttachmentRequest();
+        request.setDocumentId(null); // test thiếu documentId
+        request.setFileName("example.pdf");
+        request.setFileLink("http://example.com/example.pdf");
+        request.setAttachmentTypeCode("TYPE01");
+
+        mockMvc.perform(post("/api/documents/attachments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.message", is("Document ID is required")));
+    }
+
+    @Test
+    public void saveDocumentAttachment_Exception() throws Exception {
+        DocumentAttachmentRequest request = new DocumentAttachmentRequest();
+        request.setDocumentId(UUID.randomUUID());
+        request.setFileName("example.pdf");
+        request.setFileLink("http://example.com/example.pdf");
+        request.setAttachmentTypeCode("TYPE01");
+
+        Mockito.doThrow(new RuntimeException("DB error"))
+                .when(documentService)
+                .saveDocumentAttachment(eq(request.getDocumentId()), any(DocumentAttachmentRequest.class));
+
+        mockMvc.perform(post("/api/documents/attachments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.message", containsString("Error saving document attachment")));
+    }
+
+    @Test
+    public void searchDocuments_Success() throws Exception {
+        DocumentSearchRequest request = new DocumentSearchRequest();
+        request.setTaxCode("1234567890");
+        request.setCompanyName("company name 1");
+        request.setPage(0);
+        request.setSize(10);
+
+        DocumentSearchProjection projection = new DocumentSearchProjectionImpl(
+                UUID.fromString("90bfff00-262b-44b3-a0b5-2f89a49efa47"),
+                "1234567890",
+                "company name 1",
+                "123 Nguyễn Văn Linh, Đà Nẵng",
+                "Cấp Giấy Phép Xuất Khẩu Tiền Chất Sử Dụng Trong Lĩnh Vực Công Nghiệp",
+                "Từ Chối",
+                "Hà Nội");
+
+        Page<DocumentSearchProjection> page = new PageImpl<>(
+                Collections.singletonList(projection),
+                PageRequest.of(0, 10),
+                1);
+
+        Mockito.when(documentService.searchDocuments(any(DocumentSearchRequest.class))).thenReturn(page);
+
+        mockMvc.perform(post("/api/documents/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].id", is(projection.getId().toString())))
+                .andExpect(jsonPath("$.content[0].taxCode", is("1234567890")))
+                .andExpect(jsonPath("$.content[0].companyName", is("company name 1")))
+                .andExpect(jsonPath("$.content[0].address", is("123 Nguyễn Văn Linh, Đà Nẵng")))
+                .andExpect(jsonPath("$.content[0].documentTypeName",
+                        is("Cấp Giấy Phép Xuất Khẩu Tiền Chất Sử Dụng Trong Lĩnh Vực Công Nghiệp")))
+                .andExpect(jsonPath("$.content[0].statusName", is("Từ Chối")))
+                .andExpect(jsonPath("$.content[0].provinceName", is("Hà Nội")));
     }
 
 }

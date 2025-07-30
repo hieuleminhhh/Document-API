@@ -3,8 +3,8 @@ package com.example.documentapi.controller;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,44 +30,49 @@ public class DocumentController {
         this.documentService = documentService;
     }
 
-    @GetMapping("/")
-    public String hello() {
-        return "Spring Boot is running!";
-    }
-
     @PostMapping
     public ResponseEntity<APIResponseDto> createDocument(@Valid @RequestBody DocumentRequest request) {
         UUID documentId = documentService.createDocument(request);
-        return ResponseEntity.ok(new APIResponseDto(true, "Document created successfully", documentId));
+
+        APIResponseDto response = new APIResponseDto(true, "Document created successfully", documentId);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
     @PostMapping("/history")
-    public ResponseEntity<APIResponseDto> saveDocumentHistory(@RequestBody DocumentHistoryRequest request) {
+    public ResponseEntity<APIResponseDto> saveDocumentHistory(@Valid @RequestBody DocumentHistoryRequest request) {
         try {
             if (request.getDocumentId() == null) {
-                return ResponseEntity.status(400).body(new APIResponseDto(false, "Document ID is required", null));
+                return ResponseEntity.status(400)
+                        .body(new APIResponseDto(false, "Document ID is required", request));
             }
 
             documentService.saveDocumentHistory(request.getDocumentId(), request);
 
-            return ResponseEntity.ok(new APIResponseDto(true, "Document history saved successfully", null));
+            return ResponseEntity.ok(new APIResponseDto(true, "Document history saved successfully", request));
         } catch (Exception e) {
             return ResponseEntity.status(500)
-                    .body(new APIResponseDto(false, "Error saving document history: " + e.getMessage(), null));
+                    .body(new APIResponseDto(false, "Error saving document history: " + e.getMessage(), request));
         }
     }
 
     @PostMapping("/attachments")
-    public ResponseEntity<APIResponseDto> saveDocumentAttachment(@RequestBody DocumentAttachmentRequest request) {
+    public ResponseEntity<APIResponseDto> saveDocumentAttachment(
+            @Valid @RequestBody DocumentAttachmentRequest request) {
         try {
             if (request.getDocumentId() == null) {
-                return ResponseEntity.status(400).body(new APIResponseDto(false, "Document ID is required", null));
+                return ResponseEntity.status(400)
+                        .body(new APIResponseDto(false, "Document ID is required", request));
             }
+
             documentService.saveDocumentAttachment(request.getDocumentId(), request);
-            return ResponseEntity.ok(new APIResponseDto(true, "Document attachment saved successfully", null));
+
+            return ResponseEntity.ok(new APIResponseDto(true, "Document attachment saved successfully", request));
         } catch (Exception e) {
             return ResponseEntity.status(500)
-                    .body(new APIResponseDto(false, "Error saving document attachment: " + e.getMessage(), null));
+                    .body(new APIResponseDto(false, "Error saving document attachment: " + e.getMessage(), request));
         }
     }
 
