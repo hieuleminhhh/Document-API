@@ -1,21 +1,26 @@
 package com.example.documentapi.controller;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.documentapi.dto.APIResponseDto;
 import com.example.documentapi.dto.DocumentAttachmentRequest;
+import com.example.documentapi.dto.DocumentFullResponseDto;
 import com.example.documentapi.dto.DocumentHistoryRequest;
 import com.example.documentapi.dto.DocumentRequest;
 import com.example.documentapi.dto.DocumentSearchProjection;
 import com.example.documentapi.dto.DocumentSearchRequest;
+import com.example.documentapi.dto.PageResponse;
 import com.example.documentapi.service.DocumentService;
 
 import jakarta.validation.Valid;
@@ -77,8 +82,31 @@ public class DocumentController {
     }
 
     @PostMapping("/search")
-    public ResponseEntity<Page<DocumentSearchProjection>> searchDocuments(@RequestBody DocumentSearchRequest request) {
-        return ResponseEntity.ok(documentService.searchDocuments(request));
+    public ResponseEntity<APIResponseDto> searchDocuments(@RequestBody DocumentSearchRequest request) {
+        try {
+            Page<DocumentSearchProjection> searchResultPage = documentService.searchDocuments(request);
+            PageResponse<DocumentSearchProjection> pageResponse = new PageResponse<>(searchResultPage);
+            return ResponseEntity.ok(new APIResponseDto(true, "Documents searched successfully", pageResponse));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new APIResponseDto(false, "Error during document search: " + e.getMessage(), null));
+        }
+    }
+
+    @GetMapping("/allDocuments")
+    public ResponseEntity<APIResponseDto> getAllFullDocuments(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            Page<DocumentFullResponseDto> fullDocumentsPage = documentService.getAllFullDocuments(page, size);
+            PageResponse<DocumentFullResponseDto> pageResponse = new PageResponse<>(fullDocumentsPage);
+
+            return ResponseEntity.ok(
+                    new APIResponseDto(true, "Full documents retrieved successfully", pageResponse));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new APIResponseDto(false, "Failed to retrieve full documents: " + e.getMessage(), null));
+        }
     }
 
 }

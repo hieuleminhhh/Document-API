@@ -8,7 +8,7 @@ import lombok.Data;
 
 @Data
 public class DocumentHistoryRequest {
-
+    private UUID historyId;
     private UUID documentId;
 
     @NotBlank(message = "Title must not be blank")
