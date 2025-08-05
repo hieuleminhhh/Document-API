@@ -1,6 +1,5 @@
 package com.example.documentapi.controller;
 
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -50,7 +49,7 @@ public class DocumentController {
     public ResponseEntity<APIResponseDto> saveDocumentHistory(@Valid @RequestBody DocumentHistoryRequest request) {
         try {
             if (request.getDocumentId() == null) {
-                return ResponseEntity.status(400)
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(new APIResponseDto(false, "Document ID is required", request));
             }
 
@@ -58,7 +57,7 @@ public class DocumentController {
 
             return ResponseEntity.ok(new APIResponseDto(true, "Document history saved successfully", request));
         } catch (Exception e) {
-            return ResponseEntity.status(500)
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new APIResponseDto(false, "Error saving document history: " + e.getMessage(), request));
         }
     }
@@ -68,7 +67,7 @@ public class DocumentController {
             @Valid @RequestBody DocumentAttachmentRequest request) {
         try {
             if (request.getDocumentId() == null) {
-                return ResponseEntity.status(400)
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(new APIResponseDto(false, "Document ID is required", request));
             }
 
@@ -76,7 +75,7 @@ public class DocumentController {
 
             return ResponseEntity.ok(new APIResponseDto(true, "Document attachment saved successfully", request));
         } catch (Exception e) {
-            return ResponseEntity.status(500)
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new APIResponseDto(false, "Error saving document attachment: " + e.getMessage(), request));
         }
     }
@@ -95,10 +94,37 @@ public class DocumentController {
 
     @GetMapping("/allDocuments")
     public ResponseEntity<APIResponseDto> getAllFullDocuments(
+            @RequestParam(required = false) String taxCode,
+            @RequestParam(required = false) String companyName,
+            @RequestParam(required = false) String address,
+            @RequestParam(required = false) String companyPhoneNumber,
+            @RequestParam(required = false) String companyFax,
+            @RequestParam(required = false) String companyEmail,
+            @RequestParam(required = false) String provinceCode,
+            @RequestParam(required = false) String wardCode,
+            @RequestParam(required = false) String documentType,
+            @RequestParam(required = false) String statusId,
+            @RequestParam(required = false) String nswCode,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
+
         try {
-            Page<DocumentFullResponseDto> fullDocumentsPage = documentService.getAllFullDocuments(page, size);
+            DocumentSearchRequest request = new DocumentSearchRequest();
+            request.setTaxCode(taxCode);
+            request.setCompanyName(companyName);
+            request.setAddress(address);
+            request.setCompanyPhoneNumber(companyPhoneNumber);
+            request.setCompanyFax(companyFax);
+            request.setCompanyEmail(companyEmail);
+            request.setProvinceCode(provinceCode);
+            request.setWardCode(wardCode);
+            request.setDocumentType(documentType);
+            request.setStatusId(statusId);
+            request.setNswCode(nswCode);
+            request.setPage(page);
+            request.setSize(size);
+
+            Page<DocumentFullResponseDto> fullDocumentsPage = documentService.getAllFullDocuments(request);
             PageResponse<DocumentFullResponseDto> pageResponse = new PageResponse<>(fullDocumentsPage);
 
             return ResponseEntity.ok(
